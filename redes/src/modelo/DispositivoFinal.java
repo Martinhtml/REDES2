@@ -44,6 +44,12 @@ public class DispositivoFinal {
 	public void setTiempoRespuestaMs(long tiempoRespuestaMs) {
 		this.tiempoRespuestaMs = tiempoRespuestaMs;
 	}
+
+	@Override
+	public String toString() {
+		return "DispositivoFinal [ip=" + ip + ", nombre=" + nombre + ", estaConectado=" + estaConectado
+				+ ", tiempoRespuestaMs=" + tiempoRespuestaMs + "]";
+	}
     
     
 }
