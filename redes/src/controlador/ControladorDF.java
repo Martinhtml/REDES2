@@ -1,84 +1,82 @@
 package controlador;
-
-
 import modelo.DispositivoFinal;
 import java.net.*;
 import java.util.ArrayList;
-
 public class ControladorDF {
-	 public boolean validarIP(String ip) {
-
-	        try {
-	            InetAddress.getByName(ip);
-	            return true;
-	        }
-	        catch (Exception e) {
-	            return false;
-	        }
+	private Process procesoActual;
+	public boolean validarIP(String ip) {
+	    String[] partes = ip.split("\\.");
+	    if (partes.length != 4) {
+	        return false;
 	    }
-	public DispositivoFinal escanearIp(String ip, int timeOut) {
+	    try {
+	        for (String parte : partes) {
+	            int numero = Integer.parseInt(parte);
+	            if (numero < 0 || numero > 255) {
+	                return false;
+	            }
+	        }
+	        return true;
+	    } catch (NumberFormatException e) {
+	        return false;
+	    }
+	}
+	
+	public DispositivoFinal escanearIp(String ip, int timeout) {
 		DispositivoFinal dispositivo = new DispositivoFinal(ip);
 		try {
-			
-			InetAddress direccion = InetAddress.getByName(ip);
 			long inicio = System.currentTimeMillis();
-			
-			boolean responde = direccion.isReachable(timeOut);
+			ProcessBuilder pb = new ProcessBuilder("ping", "-n", "1", "-w", String.valueOf(timeout), ip);
+			procesoActual = pb.start();
+			Process proceso = procesoActual;
+			int resultado = proceso.waitFor();
 			long fin = System.currentTimeMillis();
-			dispositivo.setEstaConectado(responde);
-			if (responde) {
-				dispositivo.setTiempoRespuestaMs(fin-inicio);
-				dispositivo.setNombre(direccion.getHostName());
+			long tiempo = fin - inicio;
+			if (resultado == 0) {
+				dispositivo.setEstaConectado(true);
+				dispositivo.setTiempoRespuestaMs(tiempo);
+				try {
+					InetAddress direccion = InetAddress.getByName(ip);
+					String nombre = direccion.getCanonicalHostName();
+					if (!nombre.equals(ip)) {
+						dispositivo.setNombre(nombre);
+					}
+				} catch (Exception e) {
+					dispositivo.setNombre("Desconocido");
+				}
+			} else {
+				dispositivo.setEstaConectado(false);
+				dispositivo.setTiempoRespuestaMs(0);
+				dispositivo.setNombre("Desconocido");
 			}
-		}catch(Exception e) {
+		} catch (Exception e) {
 			dispositivo.setEstaConectado(false);
+			dispositivo.setTiempoRespuestaMs(0);
+			dispositivo.setNombre("Desconocido");
 		}
+		procesoActual = null;
 		return dispositivo;
+	}
+	public void detenerEscaneo() {
+		if (procesoActual != null && procesoActual.isAlive()) {
+			procesoActual.destroyForcibly();
+			procesoActual = null;
+		}
 	}
 	
 	public int ipAEntero(String ip) {
-
-	    String[] partes = ip.split("\\.");
-
-	    int resultado = 0;
-
-	    for(int i = 0; i < 4; i++) {
-
-	        resultado = resultado * 256 +
-	                Integer.parseInt(partes[i]);
-	    }
-
-	    return resultado;
+		String[] partes = ip.split("\\.");
+		int resultado = 0;
+		for (int i = 0; i < 4; i++) {
+			resultado = resultado * 256 + Integer.parseInt(partes[i]);
+		}
+		return resultado;
 	}
-	
-	
 	public String enteroAIp(int numero) {
-
-	    return String.format("%d.%d.%d.%d",
-	            (numero >> 24) & 255,
-	            (numero >> 16) & 255,
-	            (numero >> 8) & 255,
-	            numero & 255);
+		return String.format("%d.%d.%d.%d", (numero >> 24) & 255, (numero >> 16) & 255, (numero >> 8) & 255,
+				numero & 255);
 	}
 	
-	
-	
-	public ArrayList<DispositivoFinal> escanearRango(String ipInicio, String ipFin, int timeout){
-
-	    ArrayList<DispositivoFinal> lista = new ArrayList<>();
-
-	    int inicio = ipAEntero(ipInicio);
-	    int fin = ipAEntero(ipFin);
-
-	    for(int i = inicio; i <= fin; i++) {
-
-	        String ipActual = enteroAIp(i);
-
-	        DispositivoFinal dispositivo = escanearIp(ipActual, timeout);
-
-	        lista.add(dispositivo);
-	    }
-
-	    return lista;
-	}
 }
+
+
